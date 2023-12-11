@@ -4,6 +4,7 @@
     <title>Go ToDo App</title>
     <script src="https://unpkg.com/htmx.org"></script>
     <script src="https://unpkg.com/idiomorph"></script>
+    <script src="https://unpkg.com/htmx.org/dist/ext/ws.js"></script>
 </head>
 <body hx-ext="morph" id="body">
     <h1>Go ToDo App using HTMX</h1>
@@ -11,7 +12,7 @@
         <input type="text" name="title" required>
         <button type="submit">Add</button>
     </form>
-    <div id="list-wrapper">
+    <div id="list-wrapper" hx-ext="ws" ws-connect="/ws">
         <ul id="list">
             {{range .}}
             <li>
@@ -21,5 +22,17 @@
             {{end}}
         </ul>
     </div>
+
+    <script>
+        document.addEventListener('htmx:wsAfterMessage', function(event) {
+            console.log("WebSocket message received:", event.detail);
+            // Directly fetching the updated list from the server
+            htmx.ajax("GET", "/", {
+                target: "#list-wrapper",
+                select: "#list",
+                swap: "morph"
+            });
+        });
+    </script>
 </body>
 </html>
