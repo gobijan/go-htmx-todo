@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Go ToDo App</title>
+    <script src="https://unpkg.com/htmx.org"></script>
+    <script src="https://unpkg.com/idiomorph"></script>
+</head>
+<body hx-ext="morph" id="body">
+    <h1>Go ToDo App using HTMX</h1>
+    <form hx-post="/add" hx-swap="morph" hx-target="#body">
+        <input type="text" name="title" required>
+        <button type="submit">Add</button>
+    </form>
+    <div id="list-wrapper">
+        <ul id="list">
+            {{range .}}
+            <li>
+                <span>{{.Title}} - {{.Done}}</span>
+                <button hx-patch="/toggle?id={{.ID}}" hx-swap="morph" hx-target="#list-wrapper" hx-select="#list" hx-trigger="click">{{if .Done}}Undo{{else}}Done{{end}}</button>
+            </li>
+            {{end}}
+        </ul>
+    </div>
+</body>
+</html>
