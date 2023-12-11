@@ -5,18 +5,20 @@
     <script src="https://unpkg.com/htmx.org"></script>
     <script src="https://unpkg.com/idiomorph"></script>
     <script src="https://unpkg.com/htmx.org/dist/ext/ws.js"></script>
+    <link rel="stylesheet" href="https://screenisland.com/assets/css/tachyons.css">
 </head>
-<body hx-ext="morph" id="body">
-    <h1>Go ToDo App using HTMX</h1>
-    <form hx-post="/add" hx-swap="morph" hx-target="#body">
-        <input type="text" name="title" required>
-        <button type="submit">Add</button>
+<body hx-ext="morph" id="body" class="code pa4 lh-copy">
+    <h1 class="f1 mv0">TODOS</h1>
+    <p class="measure">This is a Go TODO App using WebSockets, HTMX, and DOM-Morphing brought to you by Bijan.</p>
+    <form hx-post="/add" hx-swap="morph" hx-target="#body" class="mt4">
+        <input type="text" name="title" required placeholder="Master HTMX" class="input-reset pv2 bt-0 bl-0 br-0 bb" autofocus="true">
+        <button type="submit" class="button-reset bn dim pointer bg-black ph3 pv2 br3 f5 white">+ ADD</button>
     </form>
     <div id="list-wrapper" hx-ext="ws" ws-connect="/ws">
         <ul id="list">
             {{range .}}
             <li>
-                <span>{{.Title}} - {{.Done}}</span>
+                <span class="{{if .Done}}strike{{else}}no-underline{{end}}">{{.Title}}</span>
                 <button hx-patch="/toggle?id={{.ID}}" hx-swap="morph" hx-target="#list-wrapper" hx-select="#list" hx-trigger="click">{{if .Done}}Undo{{else}}Done{{end}}</button>
             </li>
             {{end}}
