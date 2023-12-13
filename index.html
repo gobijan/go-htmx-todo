@@ -20,6 +20,7 @@
             <li>
                 <span class="{{if .Done}}strike{{else}}no-underline{{end}}">{{.Title}}</span>
                 <button hx-patch="/toggle?id={{.ID}}" hx-swap="morph" hx-target="#list-wrapper" hx-select="#list" hx-trigger="click">{{if .Done}}Undo{{else}}Done{{end}}</button>
+                <button hx-delete="/delete?id={{.ID}}" hx-swap="morph" hx-target="#list-wrapper" hx-select="#list" hx-trigger="click">Delete</button>
             </li>
             {{end}}
         </ul>

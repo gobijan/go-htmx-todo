@@ -31,7 +31,9 @@ func main() {
 	http.HandleFunc("/", IndexHandler)
 	http.HandleFunc("/add", AddHandler)
 	http.HandleFunc("/toggle", ToggleHandler)
+	http.HandleFunc("/delete", DeleteHandler)
 	http.HandleFunc("/ws", WebSocketHandler)
+	log.Println("Server running at http://localhost:8080")
 	err := http.ListenAndServe("localhost:8080", nil)
 	if err != nil {
 		log.Fatal(err)
@@ -70,6 +72,24 @@ func ToggleHandler(w http.ResponseWriter, r *http.Request) {
 	for i, todo := range todoList {
 		if strconv.Itoa(todo.ID) == id {
 			todoList[i].Done = !todo.Done
+			break
+		}
+	}
+	m.Broadcast([]byte("update"))
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func DeleteHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("delete")
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	id := r.FormValue("id")
+	for i, todo := range todoList {
+		if strconv.Itoa(todo.ID) == id {
+			todoList = append(todoList[:i], todoList[i+1:]...)
 			break
 		}
 	}
