@@ -1,3 +1,4 @@
+{{- /*gotype: github.com/gobijan/go-htmx-todo.TemplateData*/ -}}
 <!DOCTYPE html>
 <html>
 <head>
@@ -5,7 +6,7 @@
     <script src="https://unpkg.com/htmx.org"></script>
     <script src="https://unpkg.com/idiomorph"></script>
     <script src="https://unpkg.com/htmx.org/dist/ext/ws.js"></script>
-    <link rel="stylesheet" href="https://screenisland.com/assets/css/tachyons.css">
+    <link rel="stylesheet" href="/assets/main.css?{{.Timestamp}}">
 </head>
 <body hx-ext="morph" id="body" class="code pa4 lh-copy">
     <h1 class="f1 mv0">TODOS</h1>
@@ -16,7 +17,7 @@
     </form>
     <div id="list-wrapper" hx-ext="ws" ws-connect="/ws">
         <ul id="list">
-            {{range .}}
+            {{range .TodoList}}
             <li>
                 <span class="{{if .Done}}strike{{else}}no-underline{{end}}">{{.Title}}</span>
                 <button hx-patch="/toggle?id={{.ID}}" hx-swap="morph" hx-target="#list-wrapper" hx-select="#list" hx-trigger="click">{{if .Done}}Undo{{else}}Done{{end}}</button>

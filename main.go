@@ -1,11 +1,13 @@
 package main
 
 import (
+	"embed"
 	_ "embed"
 	"html/template"
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/olahol/melody"
 )
@@ -16,12 +18,20 @@ type ToDo struct {
 	Done  bool
 }
 
+type TemplateData struct {
+	Timestamp int64
+	TodoList  []ToDo
+}
+
 var (
 	todoID   int
 	todoList []ToDo
 
-	//go:embed index.html
+	//go:embed index.go.html
 	indexHTML string
+
+	//go:embed assets/*
+	assets embed.FS
 
 	indexTmpl = template.Must(template.New("index").Parse(indexHTML))
 	m         = melody.New()
@@ -33,6 +43,7 @@ func main() {
 	http.HandleFunc("/toggle", ToggleHandler)
 	http.HandleFunc("/delete", DeleteHandler)
 	http.HandleFunc("/ws", WebSocketHandler)
+	http.Handle("/assets/", AssetFileHandler())
 	log.Println("Server running at http://localhost:8080")
 	err := http.ListenAndServe("localhost:8080", nil)
 	if err != nil {
@@ -40,8 +51,17 @@ func main() {
 	}
 }
 
+func AssetFileHandler() http.Handler {
+	return http.FileServer(http.FS(assets))
+}
+
 func IndexHandler(w http.ResponseWriter, r *http.Request) {
-	err := indexTmpl.Execute(w, todoList)
+	data := TemplateData{
+		Timestamp: time.Now().Unix(),
+		TodoList:  todoList,
+	}
+
+	err := indexTmpl.Execute(w, data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
