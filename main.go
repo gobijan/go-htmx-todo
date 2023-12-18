@@ -35,6 +35,7 @@ type TodoCrud interface {
 	Add(todo ToDo)
 	Toggle(id int)
 	Delete(id int)
+	Rename(id int, title string)
 }
 
 type TodoService struct {
@@ -80,17 +81,27 @@ func (t *TodoService) Delete(id int) {
 	}
 }
 
+func (t *TodoService) Rename(id int, title string) {
+	t.Lock()
+	defer t.Unlock()
+	for i, todo := range t.TodoList {
+		if todo.ID == id {
+			t.TodoList[i].Title = title
+			break
+		}
+	}
+}
+
 var (
-	//go:embed index.go.html
-	indexHTML string
+	//go:embed templates/*
+	templates embed.FS
 
 	//go:embed assets/*
 	assets embed.FS
 )
 
 func main() {
-
-	indexTmpl := template.Must(template.New("index").Parse(indexHTML))
+	indexTmpl := template.Must(template.ParseFS(templates, "templates/index.go.html"))
 
 	app := &App{
 		todoService: &TodoService{},
