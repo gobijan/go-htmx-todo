@@ -16,6 +16,7 @@ type App struct {
 	todoService TodoCrud
 	m           *melody.Melody
 	indexTmpl   *template.Template
+	renameTmpl  *template.Template
 	assets      embed.FS
 }
 
@@ -36,6 +37,7 @@ type TodoCrud interface {
 	Toggle(id int)
 	Delete(id int)
 	Rename(id int, title string)
+	Clear()
 }
 
 type TodoService struct {
@@ -92,6 +94,12 @@ func (t *TodoService) Rename(id int, title string) {
 	}
 }
 
+func (t *TodoService) Clear() {
+	t.Lock()
+	defer t.Unlock()
+	t.TodoList = []ToDo{}
+}
+
 var (
 	//go:embed templates/*
 	templates embed.FS
@@ -101,12 +109,14 @@ var (
 )
 
 func main() {
-	indexTmpl := template.Must(template.ParseFS(templates, "templates/index.go.html"))
+	indexTmpl := template.Must(template.ParseFS(templates, "templates/application.go.html", "templates/index.go.html"))
+	renameTmpl := template.Must(template.ParseFS(templates, "templates/application.go.html", "templates/rename.go.html"))
 
 	app := &App{
 		todoService: &TodoService{},
 		m:           melody.New(),
 		indexTmpl:   indexTmpl,
+		renameTmpl:  renameTmpl,
 		assets:      assets,
 	}
 
@@ -114,6 +124,9 @@ func main() {
 	http.HandleFunc("/add", app.AddHandler)
 	http.HandleFunc("/toggle", app.ToggleHandler)
 	http.HandleFunc("/delete", app.DeleteHandler)
+	http.HandleFunc("/showrename", app.ShowRenameHandler)
+	http.HandleFunc("/rename", app.RenameHandler)
+	http.HandleFunc("/clear", app.ClearHandler)
 	http.HandleFunc("/ws", app.WebSocketHandler)
 	http.Handle("/assets/", app.AssetFileHandler())
 	log.Println("Server running at http://localhost:8080")
@@ -133,6 +146,7 @@ func (a *App) IndexHandler(w http.ResponseWriter, r *http.Request) {
 		TodoList:  a.todoService.All(),
 	}
 
+	// Execute the template with the data
 	err := a.indexTmpl.Execute(w, data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -185,6 +199,57 @@ func (a *App) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.todoService.Delete(id)
+	a.m.Broadcast([]byte("update"))
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func (a *App) ShowRenameHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("show rename")
+
+	id := r.URL.Query().Get("id")
+	if id == "" {
+		http.Error(w, "id is required", http.StatusBadRequest)
+		return
+	}
+
+	// Anonymously embed the id in the template data
+	data := struct {
+		Timestamp int64
+		ID        string
+	}{
+		Timestamp: time.Now().Unix(),
+		ID:        id,
+	}
+
+	err := a.renameTmpl.Execute(w, data)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (a *App) RenameHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("rename")
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	sid := r.FormValue("id")
+	id, err := strconv.Atoi(sid)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	title := r.FormValue("title")
+	a.todoService.Rename(id, title)
+	a.m.Broadcast([]byte("update"))
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func (a *App) ClearHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("clear")
+	a.todoService.Clear()
 	a.m.Broadcast([]byte("update"))
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }

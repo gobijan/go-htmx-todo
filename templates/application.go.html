@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Go ToDo App</title>
+    <script src="https://unpkg.com/htmx.org"></script>
+    <script src="https://unpkg.com/idiomorph"></script>
+    <script src="https://unpkg.com/htmx.org/dist/ext/ws.js"></script>
+    <link rel="stylesheet" href="/assets/main.css?{{.Timestamp}}">
+</head>
+<body hx-ext="morph" id="body" class="code pa4 lh-copy">
+
+    {{ block "main" . }}{{ end }}
+
+    <script>
+        document.addEventListener('htmx:wsAfterMessage', function(event) {
+            console.log("WebSocket message received:", event.detail);
+            // Directly fetching the updated list from the server
+            htmx.ajax("GET", "/", {
+                target: "#list-wrapper",
+                select: "#list",
+                swap: "morph"
+            });
+        });
+    </script>
+</body>
+</html>
