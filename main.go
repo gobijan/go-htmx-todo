@@ -80,14 +80,15 @@ func (t *TodoService) Delete(id int) {
 	}
 }
 
-func main() {
-	var (
-		//go:embed index.go.html
-		indexHTML string
+var (
+	//go:embed index.go.html
+	indexHTML string
 
-		//go:embed assets/*
-		assets embed.FS
-	)
+	//go:embed assets/*
+	assets embed.FS
+)
+
+func main() {
 
 	indexTmpl := template.Must(template.New("index").Parse(indexHTML))
 
@@ -112,7 +113,7 @@ func main() {
 }
 
 func (a *App) AssetFileHandler() http.Handler {
-	return http.FileServer(http.FS(assets))
+	return http.FileServer(http.FS(a.assets))
 }
 
 func (a *App) IndexHandler(w http.ResponseWriter, r *http.Request) {
@@ -121,7 +122,7 @@ func (a *App) IndexHandler(w http.ResponseWriter, r *http.Request) {
 		TodoList:  a.todoService.All(),
 	}
 
-	err := indexTmpl.Execute(w, data)
+	err := a.indexTmpl.Execute(w, data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
