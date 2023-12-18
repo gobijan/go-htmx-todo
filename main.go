@@ -2,15 +2,22 @@ package main
 
 import (
 	"embed"
-	_ "embed"
 	"html/template"
 	"log"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/olahol/melody"
 )
+
+type App struct {
+	todoService TodoCrud
+	m           *melody.Melody
+	indexTmpl   *template.Template
+	assets      embed.FS
+}
 
 type ToDo struct {
 	ID    int
@@ -23,27 +30,80 @@ type TemplateData struct {
 	TodoList  []ToDo
 }
 
-var (
-	todoID   int
-	todoList []ToDo
+type TodoCrud interface {
+	All() []ToDo
+	Add(todo ToDo)
+	Toggle(id int)
+	Delete(id int)
+}
 
-	//go:embed index.go.html
-	indexHTML string
+type TodoService struct {
+	TodoCrud
+	sync.Mutex
+	TodoList []ToDo
+	ToDoID   int
+}
 
-	//go:embed assets/*
-	assets embed.FS
+func (t *TodoService) All() []ToDo {
+	t.Lock()
+	defer t.Unlock()
+	return t.TodoList
+}
 
-	indexTmpl = template.Must(template.New("index").Parse(indexHTML))
-	m         = melody.New()
-)
+func (t *TodoService) Add(todo ToDo) {
+	t.Lock()
+	defer t.Unlock()
+	todo.ID = t.ToDoID
+	t.TodoList = append(t.TodoList, todo)
+	t.ToDoID++
+}
+
+func (t *TodoService) Toggle(id int) {
+	t.Lock()
+	defer t.Unlock()
+	for i, todo := range t.TodoList {
+		if todo.ID == id {
+			t.TodoList[i].Done = !todo.Done
+			break
+		}
+	}
+}
+
+func (t *TodoService) Delete(id int) {
+	t.Lock()
+	defer t.Unlock()
+	for i, todo := range t.TodoList {
+		if todo.ID == id {
+			t.TodoList = append(t.TodoList[:i], t.TodoList[i+1:]...)
+			break
+		}
+	}
+}
 
 func main() {
-	http.HandleFunc("/", IndexHandler)
-	http.HandleFunc("/add", AddHandler)
-	http.HandleFunc("/toggle", ToggleHandler)
-	http.HandleFunc("/delete", DeleteHandler)
-	http.HandleFunc("/ws", WebSocketHandler)
-	http.Handle("/assets/", AssetFileHandler())
+	var (
+		//go:embed index.go.html
+		indexHTML string
+
+		//go:embed assets/*
+		assets embed.FS
+	)
+
+	indexTmpl := template.Must(template.New("index").Parse(indexHTML))
+
+	app := &App{
+		todoService: &TodoService{},
+		m:           melody.New(),
+		indexTmpl:   indexTmpl,
+		assets:      assets,
+	}
+
+	http.HandleFunc("/", app.IndexHandler)
+	http.HandleFunc("/add", app.AddHandler)
+	http.HandleFunc("/toggle", app.ToggleHandler)
+	http.HandleFunc("/delete", app.DeleteHandler)
+	http.HandleFunc("/ws", app.WebSocketHandler)
+	http.Handle("/assets/", app.AssetFileHandler())
 	log.Println("Server running at http://localhost:8080")
 	err := http.ListenAndServe("localhost:8080", nil)
 	if err != nil {
@@ -51,14 +111,14 @@ func main() {
 	}
 }
 
-func AssetFileHandler() http.Handler {
+func (a *App) AssetFileHandler() http.Handler {
 	return http.FileServer(http.FS(assets))
 }
 
-func IndexHandler(w http.ResponseWriter, r *http.Request) {
+func (a *App) IndexHandler(w http.ResponseWriter, r *http.Request) {
 	data := TemplateData{
 		Timestamp: time.Now().Unix(),
-		TodoList:  todoList,
+		TodoList:  a.todoService.All(),
 	}
 
 	err := indexTmpl.Execute(w, data)
@@ -68,55 +128,55 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func AddHandler(w http.ResponseWriter, r *http.Request) {
+func (a *App) AddHandler(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	title := r.FormValue("title")
-	todoList = append(todoList, ToDo{ID: todoID, Title: title})
-	todoID++
-	m.Broadcast([]byte("update"))
+	a.todoService.Add(ToDo{Title: title})
+	a.m.Broadcast([]byte("update"))
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
-func ToggleHandler(w http.ResponseWriter, r *http.Request) {
+func (a *App) ToggleHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("toggle")
 	err := r.ParseForm()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	id := r.FormValue("id")
-	for i, todo := range todoList {
-		if strconv.Itoa(todo.ID) == id {
-			todoList[i].Done = !todo.Done
-			break
-		}
+
+	sid := r.FormValue("id")
+	id, err := strconv.Atoi(sid)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
-	m.Broadcast([]byte("update"))
+	a.todoService.Toggle(id)
+	a.m.Broadcast([]byte("update"))
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
-func DeleteHandler(w http.ResponseWriter, r *http.Request) {
+func (a *App) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("delete")
 	err := r.ParseForm()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	id := r.FormValue("id")
-	for i, todo := range todoList {
-		if strconv.Itoa(todo.ID) == id {
-			todoList = append(todoList[:i], todoList[i+1:]...)
-			break
-		}
+	sid := r.FormValue("id")
+	id, err := strconv.Atoi(sid)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
-	m.Broadcast([]byte("update"))
+	a.todoService.Delete(id)
+	a.m.Broadcast([]byte("update"))
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
-func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
-	m.HandleRequest(w, r)
+func (a *App) WebSocketHandler(w http.ResponseWriter, r *http.Request) {
+	a.m.HandleRequest(w, r)
 }
