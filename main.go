@@ -2,9 +2,11 @@ package main
 
 import (
 	"embed"
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
+	"slices"
 	"strconv"
 	"sync"
 	"time"
@@ -26,18 +28,17 @@ type ToDo struct {
 	Done  bool
 }
 
-type TemplateData struct {
-	Timestamp int64
-	TodoList  []ToDo
-}
-
 type TodoCrud interface {
 	All() []ToDo
+	Find(id int) (ToDo, error)
 	Add(todo ToDo)
 	Toggle(id int)
 	Delete(id int)
 	Rename(id int, title string)
 	Clear()
+	ClearCompleted()
+	OpenTodos() []ToDo
+	CompletedTodos() []ToDo
 }
 
 type TodoService struct {
@@ -47,10 +48,50 @@ type TodoService struct {
 	ToDoID   int
 }
 
+func (t *TodoService) OpenTodos() []ToDo {
+	t.Lock()
+	defer t.Unlock()
+	openTodos := []ToDo{}
+	for _, todo := range t.TodoList {
+		if !todo.Done {
+			openTodos = append(openTodos, todo)
+		}
+	}
+	return openTodos
+}
+
+func (t *TodoService) CompletedTodos() []ToDo {
+	t.Lock()
+	defer t.Unlock()
+	completedTodos := []ToDo{}
+	for _, todo := range t.TodoList {
+		if todo.Done {
+			completedTodos = append(completedTodos, todo)
+		}
+	}
+	return completedTodos
+}
+
 func (t *TodoService) All() []ToDo {
 	t.Lock()
 	defer t.Unlock()
-	return t.TodoList
+	// make a copy of the list
+	todoList := make([]ToDo, len(t.TodoList))
+	copy(todoList, t.TodoList)
+	// reverse the copy
+	slices.Reverse(todoList)
+	return todoList
+}
+
+func (t *TodoService) Find(id int) (todo ToDo, err error) {
+	t.Lock()
+	defer t.Unlock()
+	for _, todo := range t.TodoList {
+		if todo.ID == id {
+			return todo, nil
+		}
+	}
+	return todo, fmt.Errorf("todo with id %d not found", id)
 }
 
 func (t *TodoService) Add(todo ToDo) {
@@ -100,6 +141,18 @@ func (t *TodoService) Clear() {
 	t.TodoList = []ToDo{}
 }
 
+func (t *TodoService) ClearCompleted() {
+	t.Lock()
+	defer t.Unlock()
+	var incomplete []ToDo
+	for _, todo := range t.TodoList {
+		if !todo.Done {
+			incomplete = append(incomplete, todo)
+		}
+	}
+	t.TodoList = incomplete
+}
+
 var (
 	//go:embed templates/*
 	templates embed.FS
@@ -127,6 +180,7 @@ func main() {
 	http.HandleFunc("/showrename", app.ShowRenameHandler)
 	http.HandleFunc("/rename", app.RenameHandler)
 	http.HandleFunc("/clear", app.ClearHandler)
+	http.HandleFunc("/clearcompleted", app.ClearCompletedHandler)
 	http.HandleFunc("/ws", app.WebSocketHandler)
 	http.Handle("/assets/", app.AssetFileHandler())
 	log.Println("Server running at http://localhost:8080")
@@ -141,9 +195,17 @@ func (a *App) AssetFileHandler() http.Handler {
 }
 
 func (a *App) IndexHandler(w http.ResponseWriter, r *http.Request) {
-	data := TemplateData{
-		Timestamp: time.Now().Unix(),
-		TodoList:  a.todoService.All(),
+	completedTodos := a.todoService.CompletedTodos()
+	completedTodosCount := len(completedTodos)
+
+	data := struct {
+		Timestamp           int64
+		TodoList            []ToDo
+		CompletedTodosCount int
+	}{
+		Timestamp:           time.Now().Unix(),
+		TodoList:            a.todoService.All(),
+		CompletedTodosCount: completedTodosCount,
 	}
 
 	// Execute the template with the data
@@ -212,16 +274,31 @@ func (a *App) ShowRenameHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	iid, err := strconv.Atoi(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Get Todo by id
+	todo, err := a.todoService.Find(iid)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
 	// Anonymously embed the id in the template data
 	data := struct {
 		Timestamp int64
 		ID        string
+		Todo      ToDo
 	}{
 		Timestamp: time.Now().Unix(),
 		ID:        id,
+		Todo:      todo,
 	}
 
-	err := a.renameTmpl.Execute(w, data)
+	err = a.renameTmpl.Execute(w, data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -254,6 +331,17 @@ func (a *App) ClearHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
+func (a *App) ClearCompletedHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("clear completed")
+	a.todoService.ClearCompleted()
+	a.m.Broadcast([]byte("update"))
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
 func (a *App) WebSocketHandler(w http.ResponseWriter, r *http.Request) {
-	a.m.HandleRequest(w, r)
+	if err := a.m.HandleRequest(w, r); err != nil {
+		log.Println("WebSocketHandler error:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }

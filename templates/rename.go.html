@@ -1,8 +1,9 @@
 {{define "main"}}
-<form>
+<form hx-patch="/rename" class="w-100">
     <input type="hidden" id="id" name="id" value="{{.ID}}">
-    <input type="text" id="title" name="title" required>
-    <button type="submit">Submit</button>
+    <div class="flex w-100 justify-between">
+    <input type="text" id="title" name="title" value="{{.Todo.Title}}" required>
+    <button type="submit">Update</button>
+    </div>
 </form>
 {{end}}
-
