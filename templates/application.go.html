@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Go ToDo App</title>
     <script src="https://unpkg.com/htmx.org"></script>
@@ -8,12 +9,13 @@
     <script src="https://unpkg.com/hyperscript.org@0.9.12"></script>
     <link rel="stylesheet" href="/assets/main.css?{{.Timestamp}}">
 </head>
+
 <body hx-ext="morph" id="body" class="code pa4 lh-copy mw7">
 
     {{ block "main" . }}{{ end }}
 
     <script>
-        document.addEventListener('htmx:wsAfterMessage', function(event) {
+        document.addEventListener('htmx:wsAfterMessage', function (event) {
             console.log("WebSocket message received:", event.detail);
             // Directly fetching the updated list from the server
             htmx.ajax("GET", "/", {
@@ -24,4 +26,5 @@
         });
     </script>
 </body>
+
 </html>

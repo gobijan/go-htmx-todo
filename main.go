@@ -163,7 +163,7 @@ var (
 
 func main() {
 	indexTmpl := template.Must(template.ParseFS(templates, "templates/application.go.html", "templates/index.go.html"))
-	renameTmpl := template.Must(template.ParseFS(templates, "templates/application.go.html", "templates/rename.go.html"))
+	renameTmpl := template.Must(template.ParseFS(templates, "templates/rename.go.html"))
 
 	app := &App{
 		todoService: &TodoService{},
@@ -174,13 +174,13 @@ func main() {
 	}
 
 	http.HandleFunc("/", app.IndexHandler)
-	http.HandleFunc("/add", app.AddHandler)
-	http.HandleFunc("/toggle", app.ToggleHandler)
-	http.HandleFunc("/delete", app.DeleteHandler)
-	http.HandleFunc("/showrename", app.ShowRenameHandler)
-	http.HandleFunc("/rename", app.RenameHandler)
-	http.HandleFunc("/clear", app.ClearHandler)
-	http.HandleFunc("/clearcompleted", app.ClearCompletedHandler)
+	http.HandleFunc("POST /add", app.AddHandler)
+	http.HandleFunc("PATCH /toggle", app.ToggleHandler)
+	http.HandleFunc("DELETE /delete", app.DeleteHandler)
+	http.HandleFunc("GET /showrename", app.ShowRenameHandler)
+	http.HandleFunc("PATCH /rename", app.RenameHandler)
+	http.HandleFunc("POST /clear", app.ClearHandler)
+	http.HandleFunc("POST /clearcompleted", app.ClearCompletedHandler)
 	http.HandleFunc("/ws", app.WebSocketHandler)
 	http.Handle("/assets/", app.AssetFileHandler())
 	log.Println("Server running at http://localhost:8080")
@@ -321,7 +321,6 @@ func (a *App) RenameHandler(w http.ResponseWriter, r *http.Request) {
 	title := r.FormValue("title")
 	a.todoService.Rename(id, title)
 	a.m.Broadcast([]byte("update"))
-	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func (a *App) ClearHandler(w http.ResponseWriter, r *http.Request) {

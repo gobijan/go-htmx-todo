@@ -1,44 +1,51 @@
 {{define "main"}}
 <h1 class="f1 mv0">TODOS</h1>
 <p class="measure">This is a Go TODO App using WebSockets, HTMX, and DOM-Morphing brought to you by Bijan.</p>
-<form hx-post="/add" hx-swap="morph" hx-target="#body" class="mt4" hx-preserve="true" id="addform" _="on submit put '' into #titleinput.value">
+<form hx-post="/add" hx-swap="morph" hx-target="#body" class="mt4" hx-preserve="true" id="addform"
+    _="on submit put '' into #titleinput.value">
     <div class="flex">
-        <input type="text" name="title" required placeholder="Master HTMX" class="input-reset pa2 ba br3 br--left w-100 mw5" autofocus="true" id="titleinput">
-        <button type="submit" class="button-reset bn dim pointer bg-black ph3 pv2 br3 br--right f5 white"><span class="bg-white-20 inline-flex br-pill w1 h1 pa2 items-center justify-center fw7 f4 lh-solid">+</span> Add Todo</button>
+        <input type="text" name="title" required placeholder="Master HTMX"
+            class="input-reset pa2 ba br3 br--left w-100 mw5 b--black" autofocus="true" id="titleinput">
+        <button type="submit" class="button-reset bn dim pointer bg-black ph3 pv2 br3 br--right f5 white"><span
+                class="bg-white-20 inline-flex br-pill w1 h1 pa2 items-center justify-center fw7 f4 lh-solid">+</span>
+            Add Todo</button>
     </div>
 </form>
 
 <main id="main">
-<div id="list-wrapper" hx-ext="ws" ws-connect="/ws">
-    <ul id="list" class="list ph0 mt4 flex flex-column flex-gap-2">
-        {{range .TodoList}}
-        <li class="flex ba b--black pa2 justify-between br3" id="list_item_{{.ID}}">
-            <div>
-                <span class="{{if .Done}}strike{{else}}no-underline{{end}}">{{.Title}}</span>
-            </div>
-            <div>
-                <button hx-get="/showrename?id={{.ID}}" hx-target="#list_item_{{.ID}}" hx-trigger="click">
-                    Rename
-                </button>
+    <div id="list-wrapper" hx-ext="ws" ws-connect="/ws">
+        <ul id="list" class="list ph0 mt4 flex flex-column flex-gap-2">
+            {{range .TodoList}}
+            <li class="flex ba b--black pa2 justify-between br3" id="list_item_{{.ID}}">
+                <div>
+                    <span class="{{if .Done}}strike{{else}}no-underline{{end}}">{{.Title}}</span>
+                </div>
+                <div>
+                    <button hx-get="/showrename?id={{.ID}}" hx-target="#list_item_{{.ID}}" hx-trigger="click">
+                        Rename
+                    </button>
 
-                <button hx-patch="/toggle?id={{.ID}}" hx-swap="morph" hx-swap="morph" hx-target="#body" hx-trigger="click">
-                    {{if .Done}}Undo{{else}}Done{{end}}
-                </button>
+                    <button hx-patch="/toggle?id={{.ID}}" hx-swap="morph" hx-target="#body" hx-trigger="click">
+                        {{if .Done}}Undo{{else}}Done{{end}}
+                    </button>
 
-                <button hx-delete="/delete?id={{.ID}}" hx-swap="morph" hx-target="#list-wrapper" hx-select="#list" hx-trigger="click">
-                    Delete
-                </button>
-            </div>
-        </li>
-        {{end}}
-    </ul>
-</div>
+                    <button hx-delete="/delete?id={{.ID}}" hx-swap="morph" hx-target="#list-wrapper" hx-select="#list"
+                        hx-trigger="click">
+                        Delete
+                    </button>
+                </div>
+            </li>
+            {{end}}
+        </ul>
+    </div>
 
-{{if .TodoList}}
-<div class="mt4">
-    <button hx-get="/clear" hx-swap="morph" hx-target="#list-wrapper" hx-select="#list" hx-trigger="click">Clear All</button>
-    <button hx-get="/clearcompleted" hx-swap="morph" hx-target="#list-wrapper" hx-select="#list" hx-trigger="click">Clear Completed ({{.CompletedTodosCount}})</button>
-</div>
-{{end}}
+    {{if .TodoList}}
+    <div class="mt4">
+        <button hx-post="/clear" hx-swap="morph" hx-target="#list-wrapper" hx-select="#list" hx-trigger="click">Clear
+            All</button>
+        <button hx-post="/clearcompleted" hx-swap="morph" hx-target="#list-wrapper" hx-select="#list"
+            hx-trigger="click">Clear Completed ({{.CompletedTodosCount}})</button>
+    </div>
+    {{end}}
 </main>
 {{end}}
