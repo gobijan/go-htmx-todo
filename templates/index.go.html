@@ -12,8 +12,8 @@
     </div>
 </form>
 
-<main id="main">
-    <div id="list-wrapper" hx-ext="ws" ws-connect="/ws">
+<main id="main" hx-ext="ws" ws-connect="/ws">
+    <div id="list-wrapper">
         <ul id="list" class="list ph0 mt4 flex flex-column flex-gap-2">
             {{range .TodoList}}
             <li class="flex ba b--black pa2 justify-between br3" id="list_item_{{.ID}}">
