@@ -1,7 +1,7 @@
 {{define "main"}}
 <h1 class="f1 mv0">TODOS</h1>
 <p class="measure">This is a Go TODO App using WebSockets, HTMX, and DOM-Morphing brought to you by Bijan.</p>
-<form hx-post="/add" hx-swap="morph" hx-target="#body" class="mt4" hx-preserve="true" id="addform"
+<form hx-post="/add" hx-swap="morph" hx-target="#app" class="mt4" hx-preserve="true" id="addform"
     _="on submit put '' into #titleinput.value">
     <div class="flex">
         <input type="text" name="title" required placeholder="Master HTMX"
@@ -12,7 +12,7 @@
     </div>
 </form>
 
-<main id="main" hx-ext="ws" ws-connect="/ws">
+<main id="main">
     <div id="list-wrapper">
         <ul id="list" class="list ph0 mt4 flex flex-column flex-gap-2">
             {{range .TodoList}}
@@ -25,7 +25,7 @@
                         Rename
                     </button>
 
-                    <button hx-patch="/toggle?id={{.ID}}" hx-swap="morph" hx-target="#body" hx-trigger="click">
+                    <button hx-patch="/toggle?id={{.ID}}" hx-swap="morph:innerHTML" hx-target="#body" hx-trigger="click">
                         {{if .Done}}Undo{{else}}Done{{end}}
                     </button>
 

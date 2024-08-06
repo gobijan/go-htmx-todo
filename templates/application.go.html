@@ -3,16 +3,17 @@
 
 <head>
     <title>Go ToDo App</title>
-    <script src="https://unpkg.com/htmx.org"></script>
-    <script src="https://unpkg.com/idiomorph"></script>
-    <script src="https://unpkg.com/htmx.org/dist/ext/ws.js"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.1"></script>
+    <script src="https://unpkg.com/idiomorph/dist/idiomorph-ext.min.js"></script>
+    <script src="https://unpkg.com/htmx-ext-ws@2.0.0/ws.js"></script>
     <script src="https://unpkg.com/hyperscript.org@0.9.12"></script>
     <link rel="stylesheet" href="/assets/main.css?{{.Timestamp}}">
 </head>
 
-<body hx-ext="morph" id="body" class="code pa4 lh-copy mw7">
-
+<body hx-ext="morph,ws" id="body" class="code pa4 lh-copy mw7" ws-connect="/ws">
+    <div id="app">
     {{ block "main" . }}{{ end }}
+    </div>
 
     <script>
         document.addEventListener('htmx:wsAfterMessage', function (event) {
