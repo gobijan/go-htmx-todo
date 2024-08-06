@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/olahol/melody"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 type App struct {
@@ -20,9 +22,11 @@ type App struct {
 	indexTmpl   *template.Template
 	renameTmpl  *template.Template
 	assets      embed.FS
+	db          *gorm.DB
 }
 
 type ToDo struct {
+	gorm.Model
 	ID    int
 	Title string
 	Done  bool
@@ -153,6 +157,68 @@ func (t *TodoService) ClearCompleted() {
 	t.TodoList = incomplete
 }
 
+type TodoServiceDB struct {
+	TodoCrud
+	db *gorm.DB
+}
+
+func (t *TodoServiceDB) All() []ToDo {
+	var todos []ToDo
+	t.db.Order("id desc").Find(&todos)
+	return todos
+}
+
+func (t *TodoServiceDB) Find(id int) (ToDo, error) {
+	var todo ToDo
+	result := t.db.First(&todo, id)
+	if result.Error != nil {
+		return ToDo{}, result.Error
+	}
+	return todo, nil
+}
+
+func (t *TodoServiceDB) Add(todo ToDo) {
+	t.db.Create(&todo)
+}
+
+func (t *TodoServiceDB) Toggle(id int) {
+	var todo ToDo
+	t.db.First(&todo, id)
+	todo.Done = !todo.Done
+	t.db.Save(&todo)
+}
+
+func (t *TodoServiceDB) Delete(id int) {
+	t.db.Delete(&ToDo{}, id)
+}
+
+func (t *TodoServiceDB) Rename(id int, title string) {
+	var todo ToDo
+	t.db.First(&todo, id)
+	todo.Title = title
+	t.db.Save(&todo)
+}
+
+func (t *TodoServiceDB) Clear() {
+	t.db.Exec("DELETE FROM to_dos")
+}
+
+func (t *TodoServiceDB) ClearCompleted() {
+	t.db.Where("done = ?", true).Delete(&ToDo{})
+}
+
+func (t *TodoServiceDB) OpenTodos() []ToDo {
+	var todos []ToDo
+	t.db.Where("done = ?", false).Find(&todos)
+	return todos
+}
+
+func (t *TodoServiceDB) CompletedTodos() []ToDo {
+	var todos []ToDo
+	t.db.Where("done = ?", true).Find(&todos)
+	return todos
+}
+
 var (
 	//go:embed templates/*
 	templates embed.FS
@@ -165,12 +231,23 @@ func main() {
 	indexTmpl := template.Must(template.ParseFS(templates, "templates/application.go.html", "templates/index.go.html"))
 	renameTmpl := template.Must(template.ParseFS(templates, "templates/rename.go.html"))
 
+	db, err := gorm.Open(sqlite.Open("database.db"), &gorm.Config{})
+	if err != nil {
+		panic("failed to connect database")
+	}
+
+	err = db.AutoMigrate(&ToDo{})
+	if err != nil {
+		panic("failed to migrate database")
+	}
+
 	app := &App{
-		todoService: &TodoService{},
+		todoService: &TodoServiceDB{db: db},
 		m:           melody.New(),
 		indexTmpl:   indexTmpl,
 		renameTmpl:  renameTmpl,
 		assets:      assets,
+		db:          db,
 	}
 
 	http.HandleFunc("/", app.IndexHandler)
@@ -184,7 +261,7 @@ func main() {
 	http.HandleFunc("/ws", app.WebSocketHandler)
 	http.Handle("/assets/", app.AssetFileHandler())
 	log.Println("Server running at http://localhost:8080")
-	err := http.ListenAndServe("localhost:8080", nil)
+	err = http.ListenAndServe("localhost:8080", nil)
 	if err != nil {
 		log.Fatal(err)
 	}
