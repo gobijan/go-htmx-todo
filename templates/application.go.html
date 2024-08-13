@@ -7,10 +7,11 @@
     <script src="https://unpkg.com/idiomorph/dist/idiomorph-ext.min.js"></script>
     <script src="https://unpkg.com/htmx-ext-ws@2.0.0/ws.js"></script>
     <script src="https://unpkg.com/hyperscript.org@0.9.12"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="/assets/main.css?{{.Timestamp}}">
 </head>
 
-<body hx-ext="morph,ws" id="body" class="code pa4 lh-copy mw7" ws-connect="/ws">
+<body hx-ext="morph,ws" id="body" ws-connect="/ws">
     <div id="app">
     {{ block "main" . }}{{ end }}
     </div>
