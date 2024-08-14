@@ -6,7 +6,7 @@ import (
 
 func TestTodoService(t *testing.T) {
 	// Create a new instance of TodoService
-	service := &TodoService{}
+	service := &TodoServiceMemory{}
 
 	// Test adding a new todo
 	t.Run("AddTodo", func(t *testing.T) {

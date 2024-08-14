@@ -45,14 +45,14 @@ type TodoCrud interface {
 	CompletedTodos() []ToDo
 }
 
-type TodoService struct {
+type TodoServiceMemory struct {
 	TodoCrud
 	sync.Mutex
 	TodoList []ToDo
 	ToDoID   int
 }
 
-func (t *TodoService) OpenTodos() []ToDo {
+func (t *TodoServiceMemory) OpenTodos() []ToDo {
 	t.Lock()
 	defer t.Unlock()
 	openTodos := []ToDo{}
@@ -64,7 +64,7 @@ func (t *TodoService) OpenTodos() []ToDo {
 	return openTodos
 }
 
-func (t *TodoService) CompletedTodos() []ToDo {
+func (t *TodoServiceMemory) CompletedTodos() []ToDo {
 	t.Lock()
 	defer t.Unlock()
 	completedTodos := []ToDo{}
@@ -76,7 +76,7 @@ func (t *TodoService) CompletedTodos() []ToDo {
 	return completedTodos
 }
 
-func (t *TodoService) All() []ToDo {
+func (t *TodoServiceMemory) All() []ToDo {
 	t.Lock()
 	defer t.Unlock()
 	// make a copy of the list
@@ -87,7 +87,7 @@ func (t *TodoService) All() []ToDo {
 	return todoList
 }
 
-func (t *TodoService) Find(id int) (todo ToDo, err error) {
+func (t *TodoServiceMemory) Find(id int) (todo ToDo, err error) {
 	t.Lock()
 	defer t.Unlock()
 	for _, todo := range t.TodoList {
@@ -98,7 +98,7 @@ func (t *TodoService) Find(id int) (todo ToDo, err error) {
 	return todo, fmt.Errorf("todo with id %d not found", id)
 }
 
-func (t *TodoService) Add(todo ToDo) {
+func (t *TodoServiceMemory) Add(todo ToDo) {
 	t.Lock()
 	defer t.Unlock()
 	todo.ID = t.ToDoID
@@ -106,7 +106,7 @@ func (t *TodoService) Add(todo ToDo) {
 	t.ToDoID++
 }
 
-func (t *TodoService) Toggle(id int) {
+func (t *TodoServiceMemory) Toggle(id int) {
 	t.Lock()
 	defer t.Unlock()
 	for i, todo := range t.TodoList {
@@ -117,7 +117,7 @@ func (t *TodoService) Toggle(id int) {
 	}
 }
 
-func (t *TodoService) Delete(id int) {
+func (t *TodoServiceMemory) Delete(id int) {
 	t.Lock()
 	defer t.Unlock()
 	for i, todo := range t.TodoList {
@@ -128,7 +128,7 @@ func (t *TodoService) Delete(id int) {
 	}
 }
 
-func (t *TodoService) Rename(id int, title string) {
+func (t *TodoServiceMemory) Rename(id int, title string) {
 	t.Lock()
 	defer t.Unlock()
 	for i, todo := range t.TodoList {
@@ -139,13 +139,13 @@ func (t *TodoService) Rename(id int, title string) {
 	}
 }
 
-func (t *TodoService) Clear() {
+func (t *TodoServiceMemory) Clear() {
 	t.Lock()
 	defer t.Unlock()
 	t.TodoList = []ToDo{}
 }
 
-func (t *TodoService) ClearCompleted() {
+func (t *TodoServiceMemory) ClearCompleted() {
 	t.Lock()
 	defer t.Unlock()
 	var incomplete []ToDo
