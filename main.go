@@ -2,13 +2,10 @@ package main
 
 import (
 	"embed"
-	"fmt"
 	"html/template"
 	"log"
 	"net/http"
-	"slices"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/olahol/melody"
@@ -43,118 +40,6 @@ type TodoCrud interface {
 	ClearCompleted()
 	OpenTodos() []ToDo
 	CompletedTodos() []ToDo
-}
-
-type TodoServiceMemory struct {
-	TodoCrud
-	sync.Mutex
-	TodoList []ToDo
-	ToDoID   int
-}
-
-func (t *TodoServiceMemory) OpenTodos() []ToDo {
-	t.Lock()
-	defer t.Unlock()
-	openTodos := []ToDo{}
-	for _, todo := range t.TodoList {
-		if !todo.Done {
-			openTodos = append(openTodos, todo)
-		}
-	}
-	return openTodos
-}
-
-func (t *TodoServiceMemory) CompletedTodos() []ToDo {
-	t.Lock()
-	defer t.Unlock()
-	completedTodos := []ToDo{}
-	for _, todo := range t.TodoList {
-		if todo.Done {
-			completedTodos = append(completedTodos, todo)
-		}
-	}
-	return completedTodos
-}
-
-func (t *TodoServiceMemory) All() []ToDo {
-	t.Lock()
-	defer t.Unlock()
-	// make a copy of the list
-	todoList := make([]ToDo, len(t.TodoList))
-	copy(todoList, t.TodoList)
-	// reverse the copy
-	slices.Reverse(todoList)
-	return todoList
-}
-
-func (t *TodoServiceMemory) Find(id int) (todo ToDo, err error) {
-	t.Lock()
-	defer t.Unlock()
-	for _, todo := range t.TodoList {
-		if todo.ID == id {
-			return todo, nil
-		}
-	}
-	return todo, fmt.Errorf("todo with id %d not found", id)
-}
-
-func (t *TodoServiceMemory) Add(todo ToDo) {
-	t.Lock()
-	defer t.Unlock()
-	todo.ID = t.ToDoID
-	t.TodoList = append(t.TodoList, todo)
-	t.ToDoID++
-}
-
-func (t *TodoServiceMemory) Toggle(id int) {
-	t.Lock()
-	defer t.Unlock()
-	for i, todo := range t.TodoList {
-		if todo.ID == id {
-			t.TodoList[i].Done = !todo.Done
-			break
-		}
-	}
-}
-
-func (t *TodoServiceMemory) Delete(id int) {
-	t.Lock()
-	defer t.Unlock()
-	for i, todo := range t.TodoList {
-		if todo.ID == id {
-			t.TodoList = append(t.TodoList[:i], t.TodoList[i+1:]...)
-			break
-		}
-	}
-}
-
-func (t *TodoServiceMemory) Rename(id int, title string) {
-	t.Lock()
-	defer t.Unlock()
-	for i, todo := range t.TodoList {
-		if todo.ID == id {
-			t.TodoList[i].Title = title
-			break
-		}
-	}
-}
-
-func (t *TodoServiceMemory) Clear() {
-	t.Lock()
-	defer t.Unlock()
-	t.TodoList = []ToDo{}
-}
-
-func (t *TodoServiceMemory) ClearCompleted() {
-	t.Lock()
-	defer t.Unlock()
-	var incomplete []ToDo
-	for _, todo := range t.TodoList {
-		if !todo.Done {
-			incomplete = append(incomplete, todo)
-		}
-	}
-	t.TodoList = incomplete
 }
 
 type TodoServiceDB struct {
@@ -200,7 +85,7 @@ func (t *TodoServiceDB) Rename(id int, title string) {
 }
 
 func (t *TodoServiceDB) Clear() {
-	t.db.Exec("DELETE FROM to_dos")
+	t.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&ToDo{})
 }
 
 func (t *TodoServiceDB) ClearCompleted() {
@@ -235,6 +120,9 @@ func main() {
 	if err != nil {
 		panic("failed to connect database")
 	}
+
+	// Set SQLite to WAL mode
+	db.Exec("PRAGMA journal_mode = WAL;")
 
 	err = db.AutoMigrate(&ToDo{})
 	if err != nil {
