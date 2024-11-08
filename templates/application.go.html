@@ -2,32 +2,33 @@
 <html>
 
 <head>
-    <title>Go ToDo App</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="color-scheme" content="dark">
-    <script src="https://unpkg.com/htmx.org@2.0.1"></script>
-    <script src="https://unpkg.com/idiomorph/dist/idiomorph-ext.min.js"></script>
-    <script src="https://unpkg.com/htmx-ext-ws@2.0.0/ws.js"></script>
-    <script src="https://unpkg.com/hyperscript.org@0.9.12"></script>
-    <link rel="stylesheet" href="/assets/main.css?{{.Timestamp}}">
+  <title>Go ToDo App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <script src="https://unpkg.com/htmx.org@2.0.3"></script>
+  <script src="https://unpkg.com/idiomorph/dist/idiomorph-ext.min.js"></script>
+  <script src="https://unpkg.com/htmx-ext-ws@2.0.1/ws.js"></script>
+  <script src="https://unpkg.com/hyperscript.org@0.9.13"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.blue.min.css">
+  <link rel="stylesheet" href="/assets/main.css?{{.Timestamp}}">
 </head>
 
 <body hx-ext="morph,ws" id="body" ws-connect="/ws">
-    <div id="app">
+  <div id="app" class="container">
     {{ block "main" . }}{{ end }}
-    </div>
+  </div>
 
-    <script>
-        document.addEventListener('htmx:wsAfterMessage', function (event) {
-            console.log("WebSocket message received:", event.detail);
-            // Directly fetching the updated list from the server
-            htmx.ajax("GET", "/", {
-                target: "#main",
-                select: "#main",
-                swap: "morph"
-            });
-        });
-    </script>
+  <script>
+    document.addEventListener('htmx:wsAfterMessage', function (event) {
+      console.log("WebSocket message received:", event.detail);
+      // Directly fetching the updated list from the server
+      htmx.ajax("GET", "/", {
+        target: "#main",
+        select: "#main",
+        swap: "morph"
+      });
+    });
+  </script>
 </body>
 
 </html>

@@ -1,40 +1,10 @@
-html,
-body {
-    box-sizing: border-box;
-    font-family: system-ui, sans-serif;
-    padding: 0.5rem;
-    line-height: 1.5;
-}
-
-h1 {
-    line-height: 1.2;
-}
-
 .done {
-    text-decoration: line-through;
-    color: #d4f607;
-    transition: all 0.5s;
+  text-decoration: line-through;
+  color: #8999F9;
+  transition: all 0.5s;
 }
 
 .not-done {
-    text-decoration: none;
-    color: white;
-    transition: all 0.5s;
-}
-
-#titleinput {
-    padding: 0.25rem;
-    font-size: 1rem;
-    margin-bottom: 0.5rem;
-}
-
-.btn-primary {
-    padding: 0.25rem 1rem;
-    font-size: 1rem;
-    cursor: pointer;
-    background-color: #d4f607;
-    color: black;
-    border: 2px solid black;
-    font-weight: bold;
-    border-radius: 4px;
+  text-decoration: none;
+  transition: all 0.5s;
 }
