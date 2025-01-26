@@ -4,6 +4,7 @@ import (
 	"embed"
 	"html/template"
 	"log"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
@@ -159,7 +160,7 @@ func (a *App) AssetFileHandler() http.Handler {
 	return http.FileServer(http.FS(a.assets))
 }
 
-func (a *App) IndexHandler(w http.ResponseWriter, r *http.Request) {
+func (a *App) IndexHandler(w http.ResponseWriter, _ *http.Request) {
 	completedTodos := a.todoService.CompletedTodos()
 	completedTodosCount := len(completedTodos)
 
@@ -189,7 +190,10 @@ func (a *App) AddHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	title := r.FormValue("title")
 	a.todoService.Add(ToDo{Title: title})
-	a.m.Broadcast([]byte("update"))
+	err = a.m.Broadcast([]byte("update"))
+	if err != nil {
+		slog.Info("couldn't broadcast update")
+	}
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
@@ -208,7 +212,10 @@ func (a *App) ToggleHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.todoService.Toggle(id)
-	a.m.Broadcast([]byte("update"))
+	err = a.m.Broadcast([]byte("update"))
+	if err != nil {
+		slog.Info("couldn't broadcast update")
+	}
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
@@ -226,7 +233,10 @@ func (a *App) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.todoService.Delete(id)
-	a.m.Broadcast([]byte("update"))
+	err = a.m.Broadcast([]byte("update"))
+	if err != nil {
+		slog.Info("couldn't broadcast update")
+	}
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
@@ -285,20 +295,29 @@ func (a *App) RenameHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	title := r.FormValue("title")
 	a.todoService.Rename(id, title)
-	a.m.Broadcast([]byte("update"))
+	err = a.m.Broadcast([]byte("update"))
+	if err != nil {
+		slog.Info("couldn't broadcast update")
+	}
 }
 
 func (a *App) ClearHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("clear")
 	a.todoService.Clear()
-	a.m.Broadcast([]byte("update"))
+	err := a.m.Broadcast([]byte("update"))
+	if err != nil {
+		slog.Info("couldn't broadcast update")
+	}
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func (a *App) ClearCompletedHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("clear completed")
 	a.todoService.ClearCompleted()
-	a.m.Broadcast([]byte("update"))
+	err := a.m.Broadcast([]byte("update"))
+	if err != nil {
+		slog.Info("couldn't broadcast update")
+	}
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
